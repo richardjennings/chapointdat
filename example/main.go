@@ -1,8 +1,8 @@
 package main
 
 import (
-	ch "chapointdat"
 	"fmt"
+	ch "github.com/richardjennings/chapointdat"
 	"log"
 	"os"
 )
