@@ -19,21 +19,21 @@ const (
 
 type (
 	Header struct {
-		run      int
-		prodDate time.Time
+		Run      int
+		ProdDate time.Time
 	}
 	Footer struct {
-		recordCount int
+		RecordCount int
 	}
 	Person struct {
-		companyNumber, appDateOrigin, appointmentType, personNumber,
-		corporateIndicator, appointmentDate, resignationDate, postcode,
-		partialDateOfBirth, fullDateOfBirth, title, forenames, surname,
-		honours, careOf, poBox, addressLine1, addressLine2, postTown,
-		county, country, occupation, nationality, resCountry string
+		CompanyNumber, AppDateOrigin, AppointmentType, PersonNumber,
+		CorporateIndicator, AppointmentDate, ResignationDate, Postcode,
+		PartialDateOfBirth, FullDateOfBirth, Title, Forenames, Surname,
+		Honours, CareOf, PoBox, AddressLine1, AddressLine2, PostTown,
+		County, Country, Occupation, Nationality, ResCountry string
 	}
 	Company struct {
-		companyNumber, companyStatus, numberOfOfficers, companyName string
+		CompanyNumber, CompanyStatus, NumberOfOfficers, CompanyName string
 	}
 	Reader struct {
 		personHandler  func(person Person) error
@@ -72,47 +72,65 @@ func (r *Reader) Extract(path string) error {
 		scan := bufio.NewScanner(zf)
 		for scan.Scan() {
 			line := scan.Bytes()
-			if i == 0 {
-				h, err := r.headerRow(line)
-				if err != nil {
-					return fmt.Errorf("error processing header row: %w", err)
-				}
-				if err := r.headerHandler(h); err != nil {
-					return fmt.Errorf("error processing header handler: %w", err)
-				}
-			} else if trailerRecordIdentifier == string(line[0:8]) {
-				recordCount, err := strconv.Atoi(string(line[8:16]))
-				if err != nil {
-					return fmt.Errorf("error processing trailer record row: %w", err)
-				}
-				if err := r.footerHandler(Footer{recordCount: recordCount}); err != nil {
-					return fmt.Errorf("error processing footer handler: %w", err)
-				}
-				if recordCount != companiesProcessed+personsProcessed {
-					return fmt.Errorf("unexpected number of records: %d", recordCount)
-				}
-			} else if string(line[8]) == companyRecordType {
-				company, err := r.companyRow(line)
-				if err != nil {
-					return fmt.Errorf("error processing Company row: %w", err)
-				}
-				companiesProcessed++
-				if err := r.companyHandler(company); err != nil {
-					return fmt.Errorf("error processing Company handler: %w", err)
-				}
-			} else if string(line[8]) == personRecordType {
-				person, err := r.personRow(line)
-				if err != nil {
-					return fmt.Errorf("error processing Person row: %w", err)
-				}
-				personsProcessed++
-				if err := r.personHandler(person); err != nil {
-					return fmt.Errorf("error processing Person handler: %w", err)
-				}
-			} else {
-				return fmt.Errorf("unhandled record: %s", string(line))
+			if err := r.line(line, i, &personsProcessed, &companiesProcessed); err != nil {
+				return fmt.Errorf("error: %w handling line: %s", err, string(line))
 			}
 			i++
+		}
+	}
+	return nil
+}
+
+func (r *Reader) line(line []byte, i int, pt, ct *int) error {
+	if i == 0 {
+		h, err := r.headerRow(line)
+		if err != nil {
+			return fmt.Errorf("error processing header row: %w", err)
+		}
+		if err := r.headerHandler(h); err != nil {
+			return fmt.Errorf("error processing header handler: %w", err)
+		}
+	} else if trailerRecordIdentifier == string(line[0:8]) {
+		recordCount, err := strconv.Atoi(strings.TrimSpace(string(line[8:16])))
+		if err != nil {
+			return fmt.Errorf("error processing trailer record row: %w", err)
+		}
+		if err := r.footerHandler(Footer{RecordCount: recordCount}); err != nil {
+			return fmt.Errorf("error processing footer handler: %w", err)
+		}
+		if recordCount != *ct+*pt {
+			return fmt.Errorf("unexpected number of records: %d", recordCount)
+		}
+	} else if string(line[8]) == companyRecordType {
+		company, err := r.companyRow(line)
+		if err != nil {
+			return fmt.Errorf("error processing Company row: %w", err)
+		}
+		*ct++
+		if err := r.companyHandler(company); err != nil {
+			return fmt.Errorf("error processing Company handler: %w", err)
+		}
+	} else if string(line[8]) == personRecordType {
+		person, err := r.personRow(line)
+		if err != nil {
+			return fmt.Errorf("error processing Person row: %w", err)
+		}
+		*pt++
+		if err := r.personHandler(person); err != nil {
+			return fmt.Errorf("error processing Person handler: %w", err)
+		}
+	} else {
+		// sometimes it looks like leading 0's are missing
+		if string(line[0]) == "0" {
+			if string(line[1]) == "0" {
+				return fmt.Errorf("unhandled record: %s", string(line))
+			}
+			line = append([]byte("0"), line...)
+			return r.line(line, i, pt, ct)
+		}
+		if string(line[8]) == "C" {
+			// sometimes a leading 0 is dropped from the company id.
+			return nil
 		}
 	}
 	return nil
@@ -128,88 +146,101 @@ func (r Reader) headerRow(line []byte) (h Header, err error) {
 		err = fmt.Errorf("error reading run: %w", err)
 		return
 	}
-	h.run = run
+	h.Run = run
 	prodDate, err := time.Parse("20060102", string(line[12:20]))
-	h.prodDate = prodDate
+	h.ProdDate = prodDate
 	return
 }
 
 func (r Reader) personRow(line []byte) (p Person, err error) {
-	p.companyNumber = strings.TrimSpace(string(line[0:8]))
+	p.CompanyNumber = strings.TrimSpace(string(line[0:8]))
 	if strings.TrimSpace(string(line[8])) != personRecordType {
-		err = errors.New("Person row does not include personRecordType")
+		err = errors.New("person row does not include personRecordType")
 	}
-	p.appDateOrigin = strings.TrimSpace(string(line[9]))
-	p.appointmentType = strings.TrimSpace(string(line[10:12]))
-	p.personNumber = strings.TrimSpace(string(line[12:24]))
-	p.corporateIndicator = strings.TrimSpace(string(line[24]))
-	p.appointmentDate = strings.TrimSpace(string(line[32:40]))
-	p.resignationDate = strings.TrimSpace(string(line[40:48]))
-	p.postcode = strings.TrimSpace(string(line[48:56]))
-	p.partialDateOfBirth = strings.TrimSpace(string(line[56:64]))
-	p.fullDateOfBirth = strings.TrimSpace(string(line[64:72]))
+	p.AppDateOrigin = strings.TrimSpace(string(line[9]))
+	p.AppointmentType = strings.TrimSpace(string(line[10:12]))
+	p.PersonNumber = strings.TrimSpace(string(line[12:24]))
+	p.CorporateIndicator = strings.TrimSpace(string(line[24]))
+	p.AppointmentDate = strings.TrimSpace(string(line[32:40]))
+	p.ResignationDate = strings.TrimSpace(string(line[40:48]))
+	p.Postcode = strings.TrimSpace(string(line[48:56]))
+	p.PartialDateOfBirth = strings.TrimSpace(string(line[56:64]))
+	p.FullDateOfBirth = strings.TrimSpace(string(line[64:72]))
 	variableDataLength, err := strconv.Atoi(strings.TrimSpace(string(line[72:76])))
 	if err != nil {
-		err = fmt.Errorf("error reading variable data length: %w", err)
+		// it seems like sometimes leading 0's are dropped, so lets add a 0 and
+		// try again
+		if string(line[0]) == "0" {
+			if string(line[01]) == "0" {
+				err = fmt.Errorf("error reading variable data length: %w", err)
+				return
+			}
+			line = append([]byte("0"), line...)
+			return r.personRow(line)
+		}
 	}
 	variableData := line[76 : 76+variableDataLength]
 	data := strings.Split(string(variableData), "<")
 	if len(data) > 0 {
-		p.title = strings.TrimSpace(data[0])
+		p.Title = strings.TrimSpace(data[0])
 	}
 	if len(data) > 1 {
-		p.forenames = strings.TrimSpace(data[1])
+		p.Forenames = strings.TrimSpace(data[1])
 	}
 	if len(data) > 2 {
-		p.surname = strings.TrimSpace(data[2])
+		p.Surname = strings.TrimSpace(data[2])
 	}
 	if len(data) > 3 {
-		p.honours = strings.TrimSpace(data[3])
+		p.Honours = strings.TrimSpace(data[3])
 	}
 	if len(data) > 4 {
-		p.careOf = strings.TrimSpace(data[4])
+		p.CareOf = strings.TrimSpace(data[4])
 	}
 	if len(data) > 5 {
-		p.poBox = strings.TrimSpace(data[5])
+		p.PoBox = strings.TrimSpace(data[5])
 	}
 	if len(data) > 6 {
-		p.addressLine1 = strings.TrimSpace(data[6])
+		p.AddressLine1 = strings.TrimSpace(data[6])
 	}
 	if len(data) > 7 {
-		p.addressLine2 = strings.TrimSpace(data[7])
+		p.AddressLine2 = strings.TrimSpace(data[7])
 	}
 	if len(data) > 8 {
-		p.postTown = strings.TrimSpace(data[8])
+		p.PostTown = strings.TrimSpace(data[8])
 	}
 	if len(data) > 9 {
-		p.county = strings.TrimSpace(data[9])
+		p.County = strings.TrimSpace(data[9])
 	}
 	if len(data) > 10 {
-		p.country = strings.TrimSpace(data[10])
+		p.Country = strings.TrimSpace(data[10])
 	}
 	if len(data) > 11 {
-		p.occupation = strings.TrimSpace(data[11])
+		p.Occupation = strings.TrimSpace(data[11])
 	}
 	if len(data) > 12 {
-		p.nationality = strings.TrimSpace(data[12])
+		p.Nationality = strings.TrimSpace(data[12])
 	}
 	if len(data) == 14 {
-		p.resCountry = strings.TrimSpace(data[13])
+		p.ResCountry = strings.TrimSpace(data[13])
 	}
 	return
 }
 
 func (r Reader) companyRow(line []byte) (c Company, err error) {
-	c.companyNumber = strings.TrimSpace(string(line[0:8]))
+	c.CompanyNumber = strings.TrimSpace(string(line[0:8]))
 	if string(line[8]) != companyRecordType {
-		err = fmt.Errorf("Company row does not include companyRecordType")
+		err = fmt.Errorf("company row does not include companyRecordType")
 	}
-	c.companyStatus = strings.TrimSpace(string(line[9]))
-	c.numberOfOfficers = strings.TrimSpace(string(line[32:36]))
-	nameLength, err := strconv.Atoi(string(line[36:40]))
+	c.CompanyStatus = strings.TrimSpace(string(line[9]))
+	c.NumberOfOfficers = strings.TrimSpace(string(line[32:36]))
+	nameLength, err := strconv.Atoi(strings.TrimSpace(string(line[36:40])))
 	if err != nil {
 		err = fmt.Errorf("error reading name length: %w", err)
 	}
-	c.companyName = strings.TrimSpace(string(line[40 : 40+nameLength]))
+	if nameLength+40 > len(line) {
+		// hmmm
+		return
+	}
+	c.CompanyName = strings.TrimSpace(string(line[40 : 40+nameLength]))
 	return
 }
