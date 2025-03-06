@@ -45,40 +45,39 @@ type (
 	}
 	Person struct {
 		/*
-			The majority of company numbers are 8 digit numeric;
-			however, some consist of a prefix followed by digits.
+		   The majority of company numbers are 8 digit numeric;
+		   however, some consist of a prefix followed by digits.
 		*/
 		CompanyNumber,
 
 		/*
-				This data item will contain one of the following values:
-				1. Appointment date taken from appointment document (includes 288a, AP01, AP02, AP03, AP04, RR01**, NI form
-			       296, SEAP01, and SEAP02)
-				2  Appointment date taken from Annual Return (form 363)
-				3  Appointment date taken from incorporation document (includes form 10, IN01, NI form 21, SEFM01, SEFM02,
-			       SEFM03, SEFM04, SEFM05, SECV01, and SETR02)
-				4  Appointment date taken from LLP appointment document (includes LLP288a, LLAP01, LLAP02, and NI form
-			       LLP296a)
-				5  Appointment date taken from LLP incorporation document (includes LLP2, and LLIN01)
-				6  Appointment date taken from overseas company appointment document (includes BR4, OSAP01, OSAP02,
-			       OSAP03, and OSAP04)
-				** Appointment of secretary on re-registration from private company to PLC.
+		   This data item will contain one of the following values:
+		   1. Appointment date taken from appointment document (includes 288a, AP01, AP02, AP03, AP04, RR01**, NI form
+		      296, SEAP01, and SEAP02)
+		   2  Appointment date taken from Annual Return (form 363)
+		   3  Appointment date taken from incorporation document (includes form 10, IN01, NI form 21, SEFM01, SEFM02,
+		      SEFM03, SEFM04, SEFM05, SECV01, and SETR02)
+		   4  Appointment date taken from LLP appointment document (includes LLP288a, LLAP01, LLAP02, and NI form
+		      LLP296a)
+		   5  Appointment date taken from LLP incorporation document (includes LLP2, and LLIN01)
+		   6  Appointment date taken from overseas company appointment document (includes BR4, OSAP01, OSAP02,
+		      OSAP03, and OSAP04)
+		   ** Appointment of secretary on re-registration from private company to PLC.
 		*/
 		AppDateOrigin,
 
 		/*
-			The values in these fields will be one of :
-			Current Secretary
-			Current Director
-			04	Current non-designated LLP Member
-			05	Current designated LLP Member
-			11	Current Judicial Factor
-			12	Current Receiver or Manager appointed under the Charities Act
-			13	Current Manager appointed under the CAICE Act
-			17	Current SE Member of Administrative Organ
-			18	Current SE Member of Supervisory Organ
-			19	Current SE Member of Management Organ
-
+		   The values in these fields will be one of :
+		   Current Secretary
+		   Current Director
+		   04	Current non-designated LLP Member
+		   05	Current designated LLP Member
+		   11	Current Judicial Factor
+		   12	Current Receiver or Manager appointed under the Charities Act
+		   13	Current Manager appointed under the CAICE Act
+		   17	Current SE Member of Administrative Organ
+		   18	Current SE Member of Supervisory Organ
+		   19	Current SE Member of Management Organ
 		*/
 		AppointmentType,
 
@@ -88,21 +87,21 @@ type (
 		PersonNumber,
 
 		/*
-			Will be set to “Y” if the officer is a corporate body, otherwise set to space.
+		   Will be set to “Y” if the officer is a corporate body, otherwise set to space.
 		*/
 		CorporateIndicator,
 		/*
-			Will contain either spaces or an actual date in the format CCYYMMDD.  The value spaces will signify that
-			Companies House does not have an actual date for that item.
-			If an Appointment Date is provided for Appointment Type 11, 12, or 13 this refers to the date that the form
-			was registered; the actual date of appointment is not captured for these appointment types.
+		   Will contain either spaces or an actual date in the format CCYYMMDD.  The value spaces will signify that
+		   Companies House does not have an actual date for that item.
+		   If an Appointment Date is provided for Appointment Type 11, 12, or 13 this refers to the date that the form
+		   was registered; the actual date of appointment is not captured for these appointment types.
 		*/
 		AppointmentDate,
 
 		/*
-			Will contain either spaces or an actual date in the format CCYYMMDD.  The value spaces will signify that
-			Companies House does not have an actual date for that item.
-			Resigned appointments are not normally included in a snapshot so this field will usually be blank.
+		   Will contain either spaces or an actual date in the format CCYYMMDD.  The value spaces will signify that
+		   Companies House does not have an actual date for that item.
+		   Resigned appointments are not normally included in a snapshot so this field will usually be blank.
 		*/
 		ResignationDate,
 
