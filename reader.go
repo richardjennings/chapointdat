@@ -15,6 +15,24 @@ const (
 	personRecordType         = "2"
 	snapshotHeaderIdentifier = "DDDDSNAP"
 	trailerRecordIdentifier  = "99999999"
+
+	PrefixSC = Prefix("SC")
+	PrefixSZ = Prefix("SZ")
+	PrefixZC = Prefix("ZC")
+	PrefixSF = Prefix("SF")
+	PrefixFC = Prefix("FC")
+	PrefixNI = Prefix("NI")
+	PrefixNF = Prefix("NF")
+	PrefixOC = Prefix("OC")
+	PrefixSO = Prefix("SO")
+	PrefixNC = Prefix("NC")
+	PrefixSE = Prefix("SE")
+	PrefixR  = Prefix("R")
+
+	StatusC = Status("C")
+	StatusD = Status("D")
+	StatusL = Status("L")
+	StatusR = Status("R")
 )
 
 type (
@@ -26,15 +44,96 @@ type (
 		RecordCount int
 	}
 	Person struct {
-		CompanyNumber, AppDateOrigin, AppointmentType, PersonNumber,
-		CorporateIndicator, AppointmentDate, ResignationDate, Postcode,
-		PartialDateOfBirth, FullDateOfBirth, Title, Forenames, Surname,
+		/*
+			The majority of company numbers are 8 digit numeric;
+			however, some consist of a prefix followed by digits.
+		*/
+		CompanyNumber,
+
+		/*
+				This data item will contain one of the following values:
+				1. Appointment date taken from appointment document (includes 288a, AP01, AP02, AP03, AP04, RR01**, NI form
+			       296, SEAP01, and SEAP02)
+				2  Appointment date taken from Annual Return (form 363)
+				3  Appointment date taken from incorporation document (includes form 10, IN01, NI form 21, SEFM01, SEFM02,
+			       SEFM03, SEFM04, SEFM05, SECV01, and SETR02)
+				4  Appointment date taken from LLP appointment document (includes LLP288a, LLAP01, LLAP02, and NI form
+			       LLP296a)
+				5  Appointment date taken from LLP incorporation document (includes LLP2, and LLIN01)
+				6  Appointment date taken from overseas company appointment document (includes BR4, OSAP01, OSAP02,
+			       OSAP03, and OSAP04)
+				** Appointment of secretary on re-registration from private company to PLC.
+		*/
+		AppDateOrigin,
+
+		/*
+			The values in these fields will be one of :
+			Current Secretary
+			Current Director
+			04	Current non-designated LLP Member
+			05	Current designated LLP Member
+			11	Current Judicial Factor
+			12	Current Receiver or Manager appointed under the Charities Act
+			13	Current Manager appointed under the CAICE Act
+			17	Current SE Member of Administrative Organ
+			18	Current SE Member of Supervisory Organ
+			19	Current SE Member of Management Organ
+
+		*/
+		AppointmentType,
+
+		/*
+		   12 character numeric unique person identifier (increased from 10 characters).
+		*/
+		PersonNumber,
+
+		/*
+			Will be set to “Y” if the officer is a corporate body, otherwise set to space.
+		*/
+		CorporateIndicator,
+		/*
+			Will contain either spaces or an actual date in the format CCYYMMDD.  The value spaces will signify that
+			Companies House does not have an actual date for that item.
+			If an Appointment Date is provided for Appointment Type 11, 12, or 13 this refers to the date that the form
+			was registered; the actual date of appointment is not captured for these appointment types.
+		*/
+		AppointmentDate,
+
+		/*
+			Will contain either spaces or an actual date in the format CCYYMMDD.  The value spaces will signify that
+			Companies House does not have an actual date for that item.
+			Resigned appointments are not normally included in a snapshot so this field will usually be blank.
+		*/
+		ResignationDate,
+
+		/*
+		   Current postcode for officer Service Address.
+		*/
+		Postcode,
+
+		/*
+		   Partial Date of Birth field will contain either all spaces, or a partial date of birth (century, year,
+		   month) followed by 2 space characters in the format ‘CCYYMM  ‘.  If Full Date of Birth is provided then
+		   Partial Date of Birth will also be provided.  However, Partial Date of Birth may be provided without Full
+		   Date of Birth.
+		*/
+		PartialDateOfBirth,
+
+		/*
+		   Will contain either spaces or an actual date in the format CCYYMMDD.  The value spaces will signify that
+		   Companies House does not have an actual date for that item.
+		*/
+		FullDateOfBirth,
+
+		Title, Forenames, Surname,
 		Honours, CareOf, PoBox, AddressLine1, AddressLine2, PostTown,
 		County, Country, Occupation, Nationality, ResCountry string
 	}
 	Company struct {
 		CompanyNumber, CompanyStatus, NumberOfOfficers, CompanyName string
 	}
+	Prefix string
+	Status string
 	Reader struct {
 		personHandler  func(person Person) error
 		companyHandler func(company Company) error
@@ -127,10 +226,6 @@ func (r *Reader) line(line []byte, i int, pt, ct *int) error {
 			}
 			line = append([]byte("0"), line...)
 			return r.line(line, i, pt, ct)
-		}
-		if string(line[8]) == "C" {
-			// sometimes a leading 0 is dropped from the company id.
-			return nil
 		}
 	}
 	return nil
@@ -243,4 +338,51 @@ func (r Reader) companyRow(line []byte) (c Company, err error) {
 	}
 	c.CompanyName = strings.TrimSpace(string(line[40 : 40+nameLength]))
 	return
+}
+
+func (s Status) String() string {
+	switch s {
+	case StatusC:
+		return "Converted/closed company"
+	case StatusD:
+		return "Dissolved company"
+	case StatusL:
+		return "Company in liquidation"
+	case StatusR:
+		return "Company in receivership"
+	default:
+		return "Unknown"
+	}
+}
+
+func (p Prefix) String() string {
+	switch p {
+	case PrefixSC:
+		return "Company registered in Scotland"
+	case PrefixSZ:
+		return "Scottish company not required to register"
+	case PrefixZC:
+		return "English/Welsh company not required to register"
+	case PrefixSF:
+		return "Overseas Company registered in Scotland"
+	case PrefixFC:
+		return "Overseas Company registered in England/Wales (prior to 1st October 2009)" +
+			"or Overseas Company registered in UK (from 1st October 2009)"
+	case PrefixNI:
+		return "Company registered in Northern Ireland"
+	case PrefixNF:
+		return "Overseas Company registered in Northern Ireland"
+	case PrefixOC:
+		return "Limited Liability Partnership registered in England/Wales"
+	case PrefixSO:
+		return "Limited Liability Partnership registered in Scotland"
+	case PrefixNC:
+		return "Limited Liability Partnership registered in Northern Ireland"
+	case PrefixSE:
+		return "Societas Europaea/UK Societas registered in England/Wales, Scotland or Northern Ireland"
+	case PrefixR:
+		return "Old company registered in Northern Ireland"
+	default:
+		return "Unknown"
+	}
 }

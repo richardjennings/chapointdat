@@ -14,19 +14,19 @@ func main() {
 	filePath := os.Args[1]
 	r := ch.NewReader(
 		func(p ch.Person) error {
-			fmt.Println(p)
+			//fmt.Println(p)
 			return nil
 		},
 		func(c ch.Company) error {
-			fmt.Println(c)
+			//fmt.Println(c)
 			return nil
 		},
 		func(h ch.Header) error {
-			fmt.Println(h)
+			//fmt.Println(h)
 			return nil
 		},
 		func(f ch.Footer) error {
-			fmt.Println(f)
+			//fmt.Println(f)
 			return nil
 		},
 	)
