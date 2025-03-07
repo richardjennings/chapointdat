@@ -48,3 +48,27 @@ func Test_Line_Unhandled_variable_length_issue_missing_0(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func Test_Line_InvalidCharacter(t *testing.T) {
+	r := NewReader(
+		func(p Person) error {
+			return nil
+		},
+		func(c Company) error {
+			return nil
+		},
+		func(h Header) error {
+			return nil
+		},
+		func(f Footer) error {
+			return nil
+		},
+	)
+	i := 1
+	pt, ct := 0, 0
+	line := []byte("101222052301207115400002 20160413 WA11 RLÆ197908 0098MR<DAVID<SEOW<<<<840 IBIS COURT CENTRE PARK<<WARRINGTON<CHESHIRE<ENGLAND<DIRECTOR<BRITISH<ENGLAND<")
+	err := r.line(line, i, &pt, &ct)
+	if err == nil {
+		t.Error("expected error")
+	}
+}

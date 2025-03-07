@@ -155,7 +155,7 @@ func NewReader(
 	}
 }
 
-func (r *Reader) Extract(path string) error {
+func (r *Reader) Extract(path string, errH func(err error)) error {
 	z, err := zip.OpenReader(path)
 	if err != nil {
 		return err
@@ -171,7 +171,7 @@ func (r *Reader) Extract(path string) error {
 		for scan.Scan() {
 			line := scan.Bytes()
 			if err := r.line(line, i, &personsProcessed, &companiesProcessed); err != nil {
-				return fmt.Errorf("error: %w handling line: %s", err, string(line))
+				errH(fmt.Errorf("error: %w handling line: %s", err, string(line)))
 			}
 			i++
 		}
