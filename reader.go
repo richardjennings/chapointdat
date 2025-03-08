@@ -67,17 +67,27 @@ type (
 		AppDateOrigin,
 
 		/*
-		   The values in these fields will be one of :
-		   Current Secretary
-		   Current Director
-		   04	Current non-designated LLP Member
-		   05	Current designated LLP Member
-		   11	Current Judicial Factor
-		   12	Current Receiver or Manager appointed under the Charities Act
-		   13	Current Manager appointed under the CAICE Act
-		   17	Current SE Member of Administrative Organ
-		   18	Current SE Member of Supervisory Organ
-		   19	Current SE Member of Management Organ
+		   current secretary  (00)
+		   current director   (01)
+		   resigned secretary  (02)
+		   resigned director  (03)
+		   current non-designated LLP Member  (04)
+		   current designated LLP Member  (05)
+		   resigned non-designated LLP Member (06)
+		   resigned designated LLP Member (07)
+		   current judicial factor  (11)
+		   current receiver or manager appointed under the Charities Act  (12)
+		   current manager appointed under the CAICE Act  (13)
+		   resigned judicial factor  (14)
+		   resigned receiver or manager appointed under the Charities Act  (15)
+		   resigned manager appointed under the CAICE Act  (16)
+		   current SE Member of Administrative Organ  (17)
+		   current SE Member of Supervisory Organ  (18)
+		   current SE Member of Management Organ  (19)
+		   resigned SE Member of Administrative Organ  (20)
+		   resigned SE Member of Supervisory Organ  (21)
+		   resigned SE Member of Management Organ  (22)
+		   errored appointment  (99)
 		*/
 		AppointmentType,
 
@@ -129,7 +139,17 @@ type (
 		County, Country, Occupation, Nationality, ResCountry string
 	}
 	Company struct {
-		CompanyNumber, CompanyStatus, NumberOfOfficers, CompanyName string
+		CompanyNumber,
+		/*
+		   “C”	  Converted/closed company
+		   “D”	  Dissolved company
+		   “L”	  Company in liquidation
+		   “R”	  Company in receivership
+		   Space  None of the above categories
+		*/
+		CompanyStatus,
+		NumberOfOfficers,
+		CompanyName string
 	}
 	Prefix string
 	Status string
@@ -408,4 +428,8 @@ func (p Prefix) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+func (p Person) IsCorporate() bool {
+	return p.CorporateIndicator == "Y"
 }
