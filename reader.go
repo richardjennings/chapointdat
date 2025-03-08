@@ -139,20 +139,44 @@ type (
 		headerHandler  func(header Header) error
 		footerHandler  func(footer Footer) error
 	}
+	Opt func(r *Reader)
 )
 
-func NewReader(
-	ph func(person Person) error,
-	ch func(company Company) error,
-	h func(header Header) error,
-	f func(footer Footer) error,
-) *Reader {
-	return &Reader{
-		personHandler:  ph,
-		companyHandler: ch,
-		headerHandler:  h,
-		footerHandler:  f,
+func WithPersonHandler(p func(person Person) error) Opt {
+	return func(r *Reader) {
+		r.personHandler = p
 	}
+}
+
+func WithCompanyHandler(p func(company Company) error) Opt {
+	return func(r *Reader) {
+		r.companyHandler = p
+	}
+}
+
+func WithHeaderHandler(p func(header Header) error) Opt {
+	return func(r *Reader) {
+		r.headerHandler = p
+	}
+}
+
+func WithFooterHandler(p func(footer Footer) error) Opt {
+	return func(r *Reader) {
+		r.footerHandler = p
+	}
+}
+
+func NewReader(opts ...Opt) *Reader {
+	r := &Reader{
+		personHandler:  func(p Person) error { return nil },
+		companyHandler: func(c Company) error { return nil },
+		headerHandler:  func(h Header) error { return nil },
+		footerHandler:  func(f Footer) error { return nil },
+	}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r
 }
 
 func (r *Reader) Extract(path string, errH func(err error)) error {
@@ -335,7 +359,7 @@ func (r Reader) companyRow(line []byte) (c Company, err error) {
 		// hmmm
 		return
 	}
-	c.CompanyName = strings.TrimSpace(string(line[40 : 40+nameLength]))
+	c.CompanyName = strings.TrimSpace(string(line[40 : 40+nameLength-1]))
 	return
 }
 
