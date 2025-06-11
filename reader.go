@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"strconv"
 	"strings"
 	"time"
@@ -199,17 +200,40 @@ func NewReader(opts ...Opt) *Reader {
 	return r
 }
 
-func (r *Reader) Extract(path string, errH func(err error)) error {
+func (r *Reader) Extract(path string, concurrency int, errH func(err error)) error {
 	z, err := zip.OpenReader(path)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = z.Close() }()
+
 	for _, f := range z.File {
 		var i, companiesProcessed, personsProcessed int
 		zf, err := f.Open()
 		if err != nil {
 			return err
+		}
+		lineChan := make(chan []byte, concurrency*10)
+		doneChan := make(chan bool)
+		worker := func() error {
+			for {
+				select {
+				case <-doneChan:
+					for range concurrency - 1 {
+						doneChan <- true
+					}
+					return nil
+
+				case line := <-lineChan:
+					if err := r.line(line, i, &personsProcessed, &companiesProcessed); err != nil {
+						errH(fmt.Errorf("error: %w handling line: %s", err, string(line)))
+					}
+				}
+			}
+		}
+		eg := errgroup.Group{}
+		for range concurrency {
+			eg.Go(worker)
 		}
 		scan := bufio.NewScanner(zf)
 		for scan.Scan() {
@@ -218,6 +242,10 @@ func (r *Reader) Extract(path string, errH func(err error)) error {
 				errH(fmt.Errorf("error: %w handling line: %s", err, string(line)))
 			}
 			i++
+		}
+		doneChan <- true
+		if err := eg.Wait(); err != nil {
+			return err
 		}
 	}
 	return nil

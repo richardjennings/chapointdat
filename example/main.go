@@ -42,7 +42,7 @@ func main() {
 	errH := func(err error) {
 		log.Println(err)
 	}
-	if err := r.Extract(filePath, errH); err != nil {
+	if err := r.Extract(filePath, 1, errH); err != nil {
 		log.Fatal(err)
 	}
 }
